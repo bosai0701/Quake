@@ -44,6 +44,9 @@
       overflow-wrap: break-word;
       line-height: 1.8;
     }
+    .intensity-group p {
+      line-height: 1.8;
+    }
   </style>
 </head>
 <body>
@@ -142,7 +145,6 @@
         container.innerHTML = html;
         container.style.display = "block";
       } catch (err) {
-        if (err.message === "Load failed") return; // 絶対に出さない
         const container = document.getElementById("infoContainer");
         container.innerHTML = "エラー: " + err.message;
         container.style.display = "block";

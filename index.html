@@ -118,7 +118,8 @@
                 area.City?.forEach(city => {
                   city.IntensityStation?.forEach(station => {
                     const stationName = station.Name.replace('＊', '');
-                    const intensity = station.MaxInt || area.MaxInt;
+                    const intensity = station.Int || '不明';
+
                     if (!intensityGroups[intensity]) intensityGroups[intensity] = {};
                     if (!intensityGroups[intensity][pref.Name]) intensityGroups[intensity][pref.Name] = new Set();
                     intensityGroups[intensity][pref.Name].add(stationName);
@@ -145,9 +146,11 @@
         container.innerHTML = html;
         container.style.display = "block";
       } catch (err) {
-        const container = document.getElementById("infoContainer");
-        container.innerHTML = "エラー: " + err.message;
-        container.style.display = "block";
+        setTimeout(() => {
+          const container = document.getElementById("infoContainer");
+          container.innerHTML = "エラー: " + err.message;
+          container.style.display = "block";
+        }, 500);
       }
     }
 

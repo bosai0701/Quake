@@ -85,21 +85,34 @@
         if (head?.InfoType && head?.Serial) html += `<p><strong>情報種別:</strong> ${head.InfoType} ${head.Serial}</p>`;
         if (eq?.Hypocenter?.Area?.Name) html += `<p><strong>震源地:</strong> ${eq.Hypocenter.Area.Name}</p>`;
         if (eq?.Hypocenter?.Area?.Code) html += `<p><strong>震央コード:</strong> ${eq.Hypocenter.Area.Code}</p>`;
-        if (int?.MaxInt) html += `<p><strong>最大震度:</strong> ${int.MaxInt}</p>`;
+        if (int?.MaxInt) {
+          let maxInt = int.MaxInt;
+          maxInt = maxInt.replace('5-', '5弱').replace('5+', '5強')
+                         .replace('6-', '6弱').replace('6+', '6強');
+          html += `<p><strong>最大震度:</strong> ${maxInt}</p>`;
+        }
         if (eq?.Magnitude) html += `<p><strong>マグニチュード:</strong> ${eq.Magnitude}</p>`;
 
         let lat = "不明", lon = "不明", depth = "不明";
-        const coordMatch = eq?.Hypocenter?.Area?.Coordinate?.match(/\+([0-9.]+)\+([0-9.]+)(-?[0-9]+)?/);
-        if (coordMatch) {
-          lat = coordMatch[1];
-          lon = coordMatch[2];
-          html += `<p><strong>座標:</strong> 緯度 ${lat} / 経度 ${lon}</p>`;
+        const coord = eq?.Hypocenter?.Area?.Coordinate;
+        if (coord && /^[\+\-][0-9.]+[\+\-][0-9.]+/.test(coord)) {
+          const match = coord.match(/([+\-][0-9.]+)([+\-][0-9.]+)([+\-][0-9]+)?/);
+          if (match) {
+            lat = match[1].replace(/[+\-]/g, '');
+            lon = match[2].replace(/[+\-]/g, '');
+            html += `<p><strong>座標:</strong> 緯度 ${lat} / 経度 ${lon}</p>`;
 
-          if (coordMatch[3]) {
-            depth = Math.abs(parseInt(coordMatch[3], 10)) / 1000;
-            html += `<p><strong>深さ:</strong> ${depth} km</p>`;
-          } else {
-            html += `<p><strong>深さ:</strong> ${depth}</p>`;
+            if (match[3]) {
+              const rawDepth = parseInt(match[3], 10);
+              if (rawDepth === 0) {
+                html += `<p><strong>深さ:</strong> ごく浅い</p>`;
+              } else {
+                depth = Math.abs(rawDepth) / 1000;
+                html += `<p><strong>深さ:</strong> ${depth} km</p>`;
+              }
+            } else {
+              html += `<p><strong>深さ:</strong> ${depth}</p>`;
+            }
           }
         }
 
@@ -111,8 +124,8 @@
         if (body?.Comments?.ForecastComment?.Text) html += `<p><strong>津波情報:</strong> ${body.Comments.ForecastComment.Text}</p>`;
         if (control?.PublishingOffice) html += `<p><strong>提供元:</strong> ${control.PublishingOffice}</p>`;
 
-        if (int?.Pref) {
-          html += `<h2><strong>各地の震度情報</strong></h2>`;
+        // 各地の震度情報
+        if (int?.Pref?.length > 0) {
           const intensityGroups = {};
 
           int.Pref.forEach(pref => {
@@ -120,30 +133,35 @@
               pref.Area.forEach(area => {
                 area.City?.forEach(city => {
                   city.IntensityStation?.forEach(station => {
-                    const stationName = station.Name.replace('＊', '');
-                    const intensity = station.Int || '不明';
-
+                    let intensity = station.Int || '不明';
+                    intensity = intensity.replace('5-', '5弱').replace('5+', '5強')
+                                         .replace('6-', '6弱').replace('6+', '6強');
+                    const name = station.Name.replace('＊', '');
                     if (!intensityGroups[intensity]) intensityGroups[intensity] = {};
                     if (!intensityGroups[intensity][pref.Name]) intensityGroups[intensity][pref.Name] = new Set();
-                    intensityGroups[intensity][pref.Name].add(stationName);
+                    intensityGroups[intensity][pref.Name].add(name);
                   });
                 });
               });
             }
           });
 
-          const intensityOrder = ['7', '6強', '6弱', '5強', '5弱', '4', '3', '2', '1', '不明'];
-          intensityOrder.forEach(intensity => {
-            const group = intensityGroups[intensity];
-            if (group) {
-              html += `<div class="intensity-group"><h2 class="intensity">震度 ${intensity}</h2>`;
-              for (const pref in group) {
-                const stations = Array.from(group[pref]).join('　');
-                html += `<p class="prefecture">[${pref}]</p><p class="area-info">${stations}</p>`;
+          const keys = Object.keys(intensityGroups);
+          if (keys.length > 0) {
+            html += `<h2><strong>各地の震度情報</strong></h2>`;
+            const intensityOrder = ['7', '6強', '6弱', '5強', '5弱', '4', '3', '2', '1', '不明'];
+            intensityOrder.forEach(intensity => {
+              const group = intensityGroups[intensity];
+              if (group) {
+                html += `<div class="intensity-group"><h2 class="intensity">震度 ${intensity}</h2>`;
+                for (const pref in group) {
+                  const stations = Array.from(group[pref]).join('　');
+                  html += `<p class="prefecture">[${pref}]</p><p class="area-info">${stations}</p>`;
+                }
+                html += `</div>`;
               }
-              html += `</div>`;
-            }
-          });
+            });
+          }
         }
 
         container.innerHTML = html;
